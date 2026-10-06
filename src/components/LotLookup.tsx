@@ -1,0 +1,9 @@
+import {useState} from 'react';
+import {Search,Check} from 'lucide-react';
+import type {VaccineLot} from '../hooks/useInventory';
+import {resolveLot,searchLots} from '../lib/lotLookup';
+import {formatDate} from '../lib/inventory';
+export default function LotLookup({lots,text,choice,onChange,onSelect}:{lots:VaccineLot[];text:string;choice:string;onChange:(value:string)=>void;onSelect:(lot:VaccineLot)=>void}){
+ const[open,setOpen]=useState(true);const{matches,selected}=resolveLot(lots,text,choice),suggestions=searchLots(lots,text).slice(0,8);
+ return <div className="lot-lookup"><label htmlFor="movement-lot">Lote</label><div className="lot-search"><Search size={17}/><input id="movement-lot" required autoFocus autoComplete="off" value={text} onFocus={()=>setOpen(true)} onChange={e=>{setOpen(true);onChange(e.target.value);}} placeholder="Escribe el lote o selecciona uno de la lista" maxLength={100} aria-expanded={open&&!selected} aria-controls="lot-results" aria-describedby="lot-help"/></div>{!selected&&open&&<div id="lot-results" className="lot-results" role="listbox" aria-label="Lotes registrados">{suggestions.map(l=><button role="option" aria-selected={l.id===choice} type="button" key={l.id} onClick={()=>{onSelect(l);setOpen(false);}}><span><strong>{l.lot}</strong><small>{l.name} · Código {l.code}</small></span><span className="lot-expiry">{formatDate(l.expiry)}</span></button>)}{!suggestions.length&&<p className="form-hint">No se encontraron lotes. Comprueba el número o registra el lote antes de mover unidades.</p>}</div>}<p className="form-hint" id="lot-help" role="status">{selected?<span className="lot-confirmed"><Check size={14}/> Lote identificado: código {selected.code} y caducidad rellenados.</span>:matches.length>1?'Este lote corresponde a varias vacunas. Selecciona la correcta en la lista.':'Escribe el lote completo para rellenar los datos o pulsa una coincidencia. No se seleccionan lotes parciales automáticamente.'}</p></div>;
+}

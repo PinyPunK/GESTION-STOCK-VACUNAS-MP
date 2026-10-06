@@ -1,0 +1,13 @@
+import {useCallback,useEffect,useState} from 'react';
+import Parse from '../parse';
+import type {VaccineOrder,OrderLine,OrderReceipt} from '../lib/orderTypes';
+export const WAREHOUSES=['Nevera 2B','Nevera 3B','Cajón consulta'];
+export type Vaccine={id:string;code:string;sivac:string;name:string;minimum:Record<string,number>};
+export type VaccineLot={id:string;code:string;sivac:string;name:string;lot:string;expiry:string;scanCode?:string;stocks:Record<string,number>};
+export type Movement={id:string;name:string;code:string;lot:string;vaccineLotId?:string;receiptId?:string;expiry?:string;movementDate?:string;professional?:string;nhc?:string;type:string;reason:string;source:string;destination:string;quantity:number;note:string;createdAt:Date};
+export const total=(p:VaccineLot)=>WAREHOUSES.reduce((n,w)=>n+(p.stocks[w]||0),0);
+export function useInventory(){
+ const [vaccines,setVaccines]=useState<Vaccine[]>([]),[lots,setLots]=useState<VaccineLot[]>([]),[movements,setMovements]=useState<Movement[]>([]),[orders,setOrders]=useState<VaccineOrder[]>([]),[orderLines,setOrderLines]=useState<OrderLine[]>([]),[receipts,setReceipts]=useState<OrderReceipt[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const refresh=useCallback(async()=>{try{const [v,l,m,o,ol,r]=await Promise.all([new Parse.Query('Vaccine').ascending('name').limit(1000).find(),new Parse.Query('VaccineLot').ascending('expiry').limit(1000).find(),new Parse.Query('VaccineMovement').descending('createdAt').limit(1000).find(),new Parse.Query('VaccineOrder').descending('date').limit(1000).find(),new Parse.Query('OrderLine').limit(1000).find(),new Parse.Query('OrderReceipt').descending('date').limit(1000).find()]);setVaccines(v.map(o=>({id:o.id!,...o.attributes} as Vaccine)));setLots(l.map(o=>({id:o.id!,...o.attributes} as VaccineLot)));setMovements(m.map(o=>({id:o.id!,...o.attributes,vaccineLotId:o.get('vaccineLot')?.id,receiptId:o.get('receipt')?.id} as Movement)));setOrders(o.map(x=>({id:x.id!,...x.attributes} as VaccineOrder)));setOrderLines(ol.map(x=>({id:x.id!,...x.attributes,orderId:x.get('order').id} as OrderLine)));setReceipts(r.map(x=>({id:x.id!,...x.attributes,orderId:x.get('order').id} as OrderReceipt)));setError('');}catch{setError('No se pudo cargar el inventario. Comprueba tu autorización y vuelve a intentarlo.');}finally{setLoading(false);}},[]);
+ useEffect(()=>{refresh();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},15000);return()=>window.clearInterval(timer);},[refresh]);return{vaccines,lots,movements,orders,orderLines,receipts,loading,error,refresh};
+}
